@@ -29,8 +29,8 @@ class Dirac():
 		self.parser.add_option('--img_width', type='int', default=28, dest='img_width')
 		self.parser.add_option('--img_height', type='int', default=28, dest='img_height')
 		self.parser.add_option('--img_depth', type='int', default=1, dest='img_depth')
-		self.parser.add_option('--z_size', type='int', default=10, dest='z_size')
-		self.parser.add_option('--nef', type='int', default=16, dest='nef')
+		self.parser.add_option('--num_groups', type='int', default=4, dest='num_groups')
+		self.parser.add_option('--num_blocks', type='int', default=4, dest='num_blocks')
 		self.parser.add_option('--max_epoch', type='int', default=20, dest='max_epoch')
 		self.parser.add_option('--n_samples', type='int', default=50000, dest='n_samples')
 		self.parser.add_option('--test', action="store_true", default=False, dest="test")
@@ -51,6 +51,7 @@ class Dirac():
 		self.img_height = opt.img_height
 		self.img_depth = opt.img_depth
 		self.dataset = opt.dataset
+		self.num_groups = opt.num_groups
 		self.model = "dirac"
 
 		self.tensorboard_dir = "./output/" + self.model + "/" + self.dataset + "/tensorboard"
@@ -64,8 +65,22 @@ class Dirac():
 
 		with tf.variable_scope("Model") as scope:
 
-			self.input_x = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
-			o_c1 = general_conv2d()
+			input_x = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
+			input_pad = tf.nn.pad(input_x, [3,3])
+			o_c1 = general_conv2d(input_pad, 48, 7, 7, 2, 2, name="conv_top")
+
+			for group in range(0, num_groups):
+
+				if(group == 0):
+					o_loop = tf.nn.max_pool(o_c1, [1, 3, 3, 1], [1, 2, 2, 1], name="maxpool_"+str(group))
+				else :
+					o_loop = tf.nn.max_pool(o_loop, [1, 3, 3, 1], [1, 2, 2, 1], name="maxpool_"+str(group))
+
+				for block in range(o, num_blocks):
+
+					o_loop = lrelu(o_loop, name="lrelu_"+str(group)+"_"+str(block))
+					o_loop = general_conv2d(o_loop, )
+
 
 
 
