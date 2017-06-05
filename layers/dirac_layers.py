@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 
 def dirac_initializer(f_h, f_w, inputdim, outputdim):
+	
 	return 1
 
 
