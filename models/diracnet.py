@@ -8,8 +8,10 @@ import random
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# sys.path.insert(0, os.path.abspath('..'))
 
-from layers import *
+from layers.basic_layers import *
+from layers.dirac_layers import *
 
 from tensorflow.examples.tutorials.mnist import input_data
 from scipy.misc import imsave
@@ -20,7 +22,7 @@ from tqdm import tqdm
 class Dirac():
 
 
-	def run_parser():
+	def run_parser(self):
 
 		self.parser = optparse.OptionParser()
 
@@ -52,7 +54,9 @@ class Dirac():
 		self.img_depth = opt.img_depth
 		self.dataset = opt.dataset
 		self.num_groups = opt.num_groups
+		self.num_blocks = opt.num_blocks
 		self.model = "dirac"
+		self.to_test = opt.test
 
 		self.tensorboard_dir = "./output/" + self.model + "/" + self.dataset + "/tensorboard"
 		self.check_dir = "./output/"+ self.model + "/" + self.dataset +"/checkpoints"
@@ -66,25 +70,40 @@ class Dirac():
 		with tf.variable_scope("Model") as scope:
 
 			input_x = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
-			input_pad = tf.nn.pad(input_x, [3,3])
+			input_pad = tf.pad(input_x, [[0, 0], [1, 3], [2, 3], [3, 0]])
 			o_c1 = general_conv2d(input_pad, 48, 7, 7, 2, 2, name="conv_top")
 
-			for group in range(0, num_groups):
+			print(o_c1.shape)
+
+			for group in range(0, self.num_groups):
 
 				if(group == 0):
-					o_loop = tf.nn.pool(o_c1, [1, 3, 3, 1], "MAX", "VALID", [1, 1, 1, 1], [1, 2, 2, 1], name="maxpool_"+str(group))
+					o_loop = tf.nn.pool(o_c1, [3, 3], "MAX", "SAME", [1, 1], [2, 2], name="maxpool_"+str(group))
 				else :
-					o_loop = tf.nn.pool(o_loop, [1, 3, 3, 1], "MAX", "VALID", [1, 1, 1, 1], [1, 2, 2, 1], name="maxpool_"+str(group))
+					o_loop = tf.nn.pool(o_loop, [3, 3], "MAX", "SAME", [1, 1], [2, 2], name="maxpool_"+str(group))
 
-				for block in range(o, num_blocks):
+				for block in range(0, self.num_blocks):
 
-					o_loop = lrelu(o_loop, name="lrelu_"+str(group)+"_"+str(block))
-					o_loop = general_conv2d(o_loop, )
+					o_loop = ncrelu(o_loop, name="crelu_"+str(group)+"_"+str(block))
+					print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))
+					# o_loop = general_conv2d(o_loop, 48, 3, 3, 1, 1, padding="SAME", name="conv_"+str(group)+"_"+str(block))
+					o_loop = dirac_conv2d(o_loop, 48, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
+
+
+
+		# Printing the model variables
+
+		self.model_vars = tf.trainable_variables()
+		for var in self.model_vars: print(var.name, var.get_shape())
 
 
 
 
-	def train():
+	def train(self):
+
+		self.model_setup()
+
+		sys.exit()
 
 		if self.dataset == 'mnist':
 			self.n_samples = self.mnist.train.num_examples
@@ -98,8 +117,6 @@ class Dirac():
 
 
 def main():
-
-	sys.exit()
 
 	model = Dirac()
 	model.initialize()
