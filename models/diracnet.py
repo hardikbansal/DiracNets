@@ -72,9 +72,9 @@ class Dirac():
 			for group in range(0, num_groups):
 
 				if(group == 0):
-					o_loop = tf.nn.max_pool(o_c1, [1, 3, 3, 1], [1, 2, 2, 1], name="maxpool_"+str(group))
+					o_loop = tf.nn.pool(o_c1, [1, 3, 3, 1], "MAX", "VALID", [1, 1, 1, 1], [1, 2, 2, 1], name="maxpool_"+str(group))
 				else :
-					o_loop = tf.nn.max_pool(o_loop, [1, 3, 3, 1], [1, 2, 2, 1], name="maxpool_"+str(group))
+					o_loop = tf.nn.pool(o_loop, [1, 3, 3, 1], "MAX", "VALID", [1, 1, 1, 1], [1, 2, 2, 1], name="maxpool_"+str(group))
 
 				for block in range(o, num_blocks):
 
