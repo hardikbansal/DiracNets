@@ -1,1 +1,3 @@
 *.pyc
+layers/__pycache__/
+models/__pycache__/

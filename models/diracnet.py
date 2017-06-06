@@ -73,7 +73,9 @@ class Dirac():
 			input_pad = tf.pad(input_x, [[0, 0], [1, 3], [2, 3], [3, 0]])
 			o_c1 = general_conv2d(input_pad, 48, 7, 7, 2, 2, name="conv_top")
 
-			print(o_c1.shape)
+			# print(o_c1.shape)
+
+			outdim = 48
 
 			for group in range(0, self.num_groups):
 
@@ -82,12 +84,20 @@ class Dirac():
 				else :
 					o_loop = tf.nn.pool(o_loop, [3, 3], "MAX", "SAME", [1, 1], [2, 2], name="maxpool_"+str(group))
 
+				# print("Max pool layer of group " + str(group) )
+
 				for block in range(0, self.num_blocks):
 
 					o_loop = ncrelu(o_loop, name="crelu_"+str(group)+"_"+str(block))
+					# print("Relu layer of group " + str(group) + " and block " + str(block))
+
 					print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))
-					# o_loop = general_conv2d(o_loop, 48, 3, 3, 1, 1, padding="SAME", name="conv_"+str(group)+"_"+str(block))
-					o_loop = dirac_conv2d(o_loop, 48, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
+					
+					o_loop = dirac_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
+					# print("conv layer of group " + str(group) + " and block " + str(block))
+
+				
+				outdim = outdim*2
 
 
 
