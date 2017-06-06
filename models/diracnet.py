@@ -6,9 +6,9 @@ import shutil
 import time
 import random
 import sys
+import pickle
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# sys.path.insert(0, os.path.abspath('..'))
 
 from layers.basic_layers import *
 from layers.dirac_layers import *
@@ -40,7 +40,7 @@ class Dirac():
 		self.parser.add_option('--enc_size', type='int', default=256, dest='enc_size')
 		self.parser.add_option('--dec_size', type='int', default=256, dest='dec_size')
 		self.parser.add_option('--model', type='string', default="draw_attn", dest='model_type')
-		self.parser.add_option('--dataset', type='string', default="mnist", dest='dataset')
+		self.parser.add_option('--dataset', type='string', default="cifar-10", dest='dataset')
 
 	def initialize(self):
 
@@ -61,6 +61,29 @@ class Dirac():
 		self.tensorboard_dir = "./output/" + self.model + "/" + self.dataset + "/tensorboard"
 		self.check_dir = "./output/"+ self.model + "/" + self.dataset +"/checkpoints"
 		self.images_dir = "./output/" + self.model + "/" + self.dataset + "/imgs"
+
+
+	def load_dataset(self):
+
+		if self.dataset=='cifar-10':
+
+			self.train_images = np.zeros([10000*5,3072], dtype=np.float32)
+			self.train_labels = np.zeros([10000*5,10], dtype=np.float32)
+
+			for i in range(0, 5):
+				file_path = os.path.join(os.path.dirname(__file__), "../../datasets/cifar-10-python/cifar-10-batches-py/data_batch_" + str(i+1))
+				print(file_path)
+				with open(file_path, mode='rb') as file:
+					data = pickle.load(file, encoding='bytes')
+					temp_images = np.array(data[b'data'])
+					temp_labels = np.array(data[b'labels'])
+					self.train_images[i*10000:(i+1)*10000,:] = temp_images
+					self.train_labels[i*10000:(i+1)*10000,:] = np.eye(10, dtype=np.float32)[temp_labels]
+					temp = np.eye(10, dtype=np.float32)[temp_labels]
+					print(temp[0:10])
+		else:
+			print("Model not supported for this dataset")
+			sys.exit()
 
 
 
@@ -130,6 +153,10 @@ def main():
 
 	model = Dirac()
 	model.initialize()
+
+	model.load_dataset()
+
+	sys.exit()
 
 	if(model.to_test):
 		model.test()

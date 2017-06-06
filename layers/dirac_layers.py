@@ -18,8 +18,7 @@ def dirac_conv2d(inputconv, output_dim=64, filter_height=5, filter_width=5, stri
 
 		input_dim = inputconv.get_shape()[-1]
 
-		weight = tf.get_variable("weight",[filter_height, filter_width, input_dim, output_dim], initializer=tf.truncated_normal_initializer(stddev=stddev))
-		
+		weight = tf.get_variable("weight",[filter_height, filter_width, input_dim, output_dim], initializer=tf.truncated_normal_initializer(stddev=stddev))		
 		bias = tf.get_variable("bias",[output_dim], dtype=np.float32, initializer=tf.constant_initializer(0.0))
 
 		dirac_weight = tf.get_variable("dirac_weight",[filter_height, filter_width, input_dim, output_dim], initializer=tf.constant_initializer(1.0), trainable=False)
