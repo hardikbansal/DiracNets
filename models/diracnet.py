@@ -28,8 +28,8 @@ class Dirac():
 
 		self.parser.add_option('--num_iter', type='int', default=1000, dest='num_iter')
 		self.parser.add_option('--batch_size', type='int', default=100, dest='batch_size')
-		self.parser.add_option('--img_width', type='int', default=28, dest='img_width')
-		self.parser.add_option('--img_height', type='int', default=28, dest='img_height')
+		self.parser.add_option('--img_width', type='int', default=32, dest='img_width')
+		self.parser.add_option('--img_height', type='int', default=32, dest='img_height')
 		self.parser.add_option('--img_depth', type='int', default=1, dest='img_depth')
 		self.parser.add_option('--num_groups', type='int', default=4, dest='num_groups')
 		self.parser.add_option('--num_blocks', type='int', default=4, dest='num_blocks')
@@ -79,8 +79,8 @@ class Dirac():
 					temp_labels = np.array(data[b'labels'])
 					self.train_images[i*10000:(i+1)*10000,:] = temp_images
 					self.train_labels[i*10000:(i+1)*10000,:] = np.eye(10, dtype=np.float32)[temp_labels]
-					temp = np.eye(10, dtype=np.float32)[temp_labels]
-					print(temp[0:10])
+					# temp = np.eye(10, dtype=np.float32)[temp_labels]
+					# print(temp[0:10])
 		else:
 			print("Model not supported for this dataset")
 			sys.exit()
@@ -93,6 +93,9 @@ class Dirac():
 		with tf.variable_scope("Model") as scope:
 
 			input_x = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
+			
+
+
 			input_pad = tf.pad(input_x, [[0, 0], [1, 3], [2, 3], [3, 0]])
 			o_c1 = general_conv2d(input_pad, 48, 7, 7, 2, 2, name="conv_top")
 
@@ -106,23 +109,18 @@ class Dirac():
 					o_loop = tf.nn.pool(o_c1, [3, 3], "MAX", "SAME", [1, 1], [2, 2], name="maxpool_"+str(group))
 				else :
 					o_loop = tf.nn.pool(o_loop, [3, 3], "MAX", "SAME", [1, 1], [2, 2], name="maxpool_"+str(group))
-
 				# print("Max pool layer of group " + str(group) )
-
 				for block in range(0, self.num_blocks):
 
 					o_loop = ncrelu(o_loop, name="crelu_"+str(group)+"_"+str(block))
 					# print("Relu layer of group " + str(group) + " and block " + str(block))
-
-					print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))
-					
+					print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))					
 					o_loop = dirac_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
 					# print("conv layer of group " + str(group) + " and block " + str(block))
-
-				
 				outdim = outdim*2
 
-
+			o_relu = tf.nn.relu(o_loop, name="relu")
+			# o_avgpool = tf.nn.avg_pool(o_relu, [1, 8, 8, 1],[1, 8, 8, 1], "VALID", name="avgpool")
 
 		# Printing the model variables
 
@@ -156,7 +154,7 @@ def main():
 
 	model.load_dataset()
 
-	sys.exit()
+	# sys.exit()
 
 	if(model.to_test):
 		model.test()
