@@ -31,7 +31,7 @@ class Dirac():
 		self.parser.add_option('--img_width', type='int', default=32, dest='img_width')
 		self.parser.add_option('--img_height', type='int', default=32, dest='img_height')
 		self.parser.add_option('--img_depth', type='int', default=3, dest='img_depth')
-		self.parser.add_option('--num_groups', type='int', default=4, dest='num_groups')
+		self.parser.add_option('--num_groups', type='int', default=3, dest='num_groups')
 		self.parser.add_option('--num_blocks', type='int', default=4, dest='num_blocks')
 		self.parser.add_option('--max_epoch', type='int', default=20, dest='max_epoch')
 		self.parser.add_option('--n_samples', type='int', default=50000, dest='n_samples')
@@ -79,8 +79,6 @@ class Dirac():
 					temp_labels = np.array(data[b'labels'])
 					self.train_images[i*10000:(i+1)*10000,:] = temp_images
 					self.train_labels[i*10000:(i+1)*10000,:] = np.eye(10, dtype=np.float32)[temp_labels]
-					# temp = np.eye(10, dtype=np.float32)[temp_labels]
-					# print(temp[0:10])
 		else:
 			print("Model not supported for this dataset")
 			sys.exit()
@@ -92,23 +90,22 @@ class Dirac():
 
 		with tf.variable_scope("Model") as scope:
 
-			input_x = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
+			self.input_imgs = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
+			self.input_labels
 
 
 			if(self.dataset == 'cifar-10'):
 
-				input_pad = tf.pad(input_x, [[0, 0], [1, 1], [1, 1], [0, 0]])
+				input_pad = tf.pad(self.input_imgs, [[0, 0], [1, 1], [1, 1], [0, 0]])
 				# print(input_pad.shape)
 				o_c1 = general_conv2d(input_pad, 16, 3, 3, 1, 1, name="conv_top")
 				# print(o_c1.shape)
 				o_loop = tf.nn.relu(o_c1, name="relu_1")
 				# print(o_loop.shape)
 
-				# print(o_c1.shape)
-
 				outdim = 16
 
-				for group in range(0, 3):
+				for group in range(0, self.num_groups):
 					
 					# print("Max pool layer of group " + str(group) )
 
@@ -116,16 +113,18 @@ class Dirac():
 
 						o_loop = ncrelu(o_loop, name="crelu_"+str(group)+"_"+str(block))
 						# print("Relu layer of group " + str(group) + " and block " + str(block))
-						print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))					
 						o_loop = dirac_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
+						print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))					
 						# print("conv layer of group " + str(group) + " and block " + str(block))
 					
-					o_loop = tf.nn.pool(o_loop, [2, 2], "MAX", "SAME", [1, 1], [2, 2], name="maxpool_"+str(group))
+					if(group < 2):
+						o_loop = tf.nn.pool(o_loop, [2, 2], "MAX", "SAME", [1, 1], [2, 2], name="maxpool_"+str(group))
 					
 					outdim = outdim*2
 
-				o_relu = tf.nn.relu(o_loop, name="relu_2")
-				o_avgpool = tf.nn.avg_pool(o_relu, [1, 8, 8, 1], [1, 8, 8, 1], "VALID", name="avgpool")
+				o_avgpool = tf.nn.avg_pool(o_loop, [1, 8, 8, 1], [1, 8, 8, 1], "VALID", name="avgpool")
+				self.final_output = linear1d(tf.reshape(o_avgpool, [self.batch_size, 64]), 64, 10) 
+
 			else :
 				print("No such dataset exist. Exiting the program")
 				sys.exit()
@@ -134,6 +133,13 @@ class Dirac():
 
 		self.model_vars = tf.trainable_variables()
 		for var in self.model_vars: print(var.name, var.get_shape())
+
+	def loss_setup(self):
+
+		self.loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.labels, logits=self.final_output, name="Error loss")
+
+		self.optimizer = tf.train.AdamOptimizer(0.001, beta1=0.5)
+		self.loss_optimizer = optimizer.minimize(self.draw_loss)
 
 
 
@@ -147,6 +153,8 @@ class Dirac():
 		if self.dataset == 'mnist':
 			self.n_samples = self.mnist.train.num_examples
 			self.mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
+
+			
 
 
 
