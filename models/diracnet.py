@@ -68,7 +68,7 @@ class Dirac():
 		if self.dataset=='cifar-10':
 
 			self.train_images = np.zeros([10000*5,3072], dtype=np.float32)
-			self.train_labels = np.zeros([10000*5,10], dtype=np.float32)
+			self.train_labels = np.zeros([10000*5], dtype=np.int32)
 
 			for i in range(0, 5):
 				file_path = os.path.join(os.path.dirname(__file__), "../../datasets/cifar-10-python/cifar-10-batches-py/data_batch_" + str(i+1))
@@ -76,9 +76,9 @@ class Dirac():
 				with open(file_path, mode='rb') as file:
 					data = pickle.load(file, encoding='bytes')
 					temp_images = np.array(data[b'data'])
-					temp_labels = np.array(data[b'labels'])
+					temp_labels = np.array(data[b'labels']).astype(np.int32)
 					self.train_images[i*10000:(i+1)*10000,:] = temp_images
-					self.train_labels[i*10000:(i+1)*10000,:] = np.eye(10, dtype=np.float32)[temp_labels]
+					self.train_labels[i*10000:(i+1)*10000] = temp_labels
 		else:
 			print("Model not supported for this dataset")
 			sys.exit()
@@ -91,7 +91,7 @@ class Dirac():
 		with tf.variable_scope("Model") as scope:
 
 			self.input_imgs = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
-			self.input_labels
+			self.input_labels = tf.placeholder(tf.int32, [self.batch_size])
 
 
 			if(self.dataset == 'cifar-10'):
@@ -136,10 +136,13 @@ class Dirac():
 
 	def loss_setup(self):
 
-		self.loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.labels, logits=self.final_output, name="Error loss")
+		loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.input_labels, logits=self.final_output, name="Error_loss")
+		loss = tf.reduce_mean(loss)
 
-		self.optimizer = tf.train.AdamOptimizer(0.001, beta1=0.5)
-		self.loss_optimizer = optimizer.minimize(self.draw_loss)
+		optimizer = tf.train.AdamOptimizer(0.001, beta1=0.5)
+		self.loss_optimizer = optimizer.minimize(loss)
+
+		print(loss.shape)
 
 
 
@@ -148,13 +151,15 @@ class Dirac():
 
 		self.model_setup()
 
+		self.loss_setup()
+
 		sys.exit()
 
 		if self.dataset == 'mnist':
 			self.n_samples = self.mnist.train.num_examples
 			self.mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
 
-			
+
 
 
 
