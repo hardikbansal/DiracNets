@@ -57,6 +57,7 @@ class Dirac():
 		self.num_blocks = opt.num_blocks
 		self.model = "dirac"
 		self.to_test = opt.test
+		self.load_checkpoint = False
 
 		self.tensorboard_dir = "./output/" + self.model + "/" + self.dataset + "/tensorboard"
 		self.check_dir = "./output/"+ self.model + "/" + self.dataset +"/checkpoints"
@@ -102,6 +103,9 @@ class Dirac():
 			sys.exit()
 
 
+	def normalize_input(self, imgs):
+
+		return imgs/127.5-1.0
 
 	def model_setup(self):
 
@@ -179,6 +183,9 @@ class Dirac():
 
 		if self.dataset == 'cifar-10':
 			self.load_dataset('train')
+			self.normalize_input()
+		else :
+			print('No such dataset exist')
 
 
 		init = tf.global_variables_initializer()
@@ -190,9 +197,10 @@ class Dirac():
 		if not os.path.exists(self.check_dir):
 			os.makedirs(self.check_dir)
 
+
 		with tf.Session() as sess:
 
-
+			writer.add_graph(sess.graph)
 			sess.run(init)
 
 			if self.load_checkpoint:
@@ -209,6 +217,9 @@ class Dirac():
 					print("In the iteration "+str(itr)+" of epoch "+str(epoch)+" with classification loss of " + str(cl_loss_temp))
 
 					writer.add_summary(summary_str,epoch*int(self.n_samples/self.batch_size) + itr)
+
+
+				saver.save(sess,os.path.join(self.check_dir,"dirac"),global_step=epoch)
 
 
 
