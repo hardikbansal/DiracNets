@@ -63,22 +63,40 @@ class Dirac():
 		self.images_dir = "./output/" + self.model + "/" + self.dataset + "/imgs"
 
 
-	def load_dataset(self):
+	def load_dataset(self, mode='train'):
+
 
 		if self.dataset=='cifar-10':
 
-			self.train_images = np.zeros([10000*5,3072], dtype=np.float32)
-			self.train_labels = np.zeros([10000*5], dtype=np.int32)
+			if (mode == 'train'):
 
-			for i in range(0, 5):
-				file_path = os.path.join(os.path.dirname(__file__), "../../datasets/cifar-10-python/cifar-10-batches-py/data_batch_" + str(i+1))
-				print(file_path)
-				with open(file_path, mode='rb') as file:
-					data = pickle.load(file, encoding='bytes')
-					temp_images = np.array(data[b'data'])
-					temp_labels = np.array(data[b'labels']).astype(np.int32)
-					self.train_images[i*10000:(i+1)*10000,:] = temp_images
-					self.train_labels[i*10000:(i+1)*10000] = temp_labels
+				self.train_images = np.zeros([10000*5,3072], dtype=np.float32)
+				self.train_labels = np.zeros([10000*5], dtype=np.int32)
+
+				for i in range(0, 5):
+					file_path = os.path.join(os.path.dirname(__file__), "../../datasets/cifar-10-python/cifar-10-batches-py/data_batch_" + str(i+1))
+					print(file_path)
+					with open(file_path, mode='rb') as file:
+						data = pickle.load(file, encoding='bytes')
+						temp_images = np.array(data[b'data'])
+						temp_labels = np.array(data[b'labels']).astype(np.int32)
+						self.train_images[i*10000:(i+1)*10000,:] = temp_images
+						self.train_labels[i*10000:(i+1)*10000] = temp_labels
+
+			elif (mode == 'test'):
+
+				self.test_images = np.zeros([10000*5,3072], dtype=np.float32)
+				self.test_labels = np.zeros([10000*5], dtype=np.int32)
+
+				for i in range(0, 5):
+					file_path = os.path.join(os.path.dirname(__file__), "../../datasets/cifar-10-python/cifar-10-batches-py/data_batch_" + str(i+1))
+					print(file_path)
+					with open(file_path, mode='rb') as file:
+						data = pickle.load(file, encoding='bytes')
+						temp_images = np.array(data[b'data'])
+						temp_labels = np.array(data[b'labels']).astype(np.int32)
+						self.test_images[i*10000:(i+1)*10000,:] = temp_images
+						self.test_labels[i*10000:(i+1)*10000] = temp_labels
 		else:
 			print("Model not supported for this dataset")
 			sys.exit()
@@ -136,11 +154,16 @@ class Dirac():
 
 	def loss_setup(self):
 
-		loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.input_labels, logits=self.final_output, name="Error_loss")
-		loss = tf.reduce_mean(loss)
+		self.loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.input_labels, logits=self.final_output, name="Error_loss")
+		self.loss = tf.reduce_mean(self.loss)
 
 		optimizer = tf.train.AdamOptimizer(0.001, beta1=0.5)
-		self.loss_optimizer = optimizer.minimize(loss)
+
+		self.loss_optimizer = optimizer.minimize(self.loss)
+
+		# Defining the summary ops
+
+		self.cl_loss_summ = tf.summary.scalar("cl_loss", loss)
 
 		print(loss.shape)
 
@@ -153,11 +176,42 @@ class Dirac():
 
 		self.loss_setup()
 
-		sys.exit()
 
-		if self.dataset == 'mnist':
-			self.n_samples = self.mnist.train.num_examples
-			self.mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
+		if self.dataset == 'cifar-10':
+			self.load_dataset('train')
+
+
+		init = tf.global_variables_initializer()
+		saver = tf.train.Saver()
+
+
+		if not os.path.exists(self.images_dir+"/train/"):
+			os.makedirs(self.images_dir+"/train/")
+		if not os.path.exists(self.check_dir):
+			os.makedirs(self.check_dir)
+
+		with tf.Session() as sess:
+
+
+			sess.run(init)
+
+			if self.load_checkpoint:
+				chkpt_fname = tf.train.latest_checkpoint(self.check_dir)
+				saver.restore(sess,chkpt_fname)
+
+			for epoch in range(0, self.max_epoch):
+
+				for itr in range(0, int(self.num_images/self.batch_size)):
+
+					imgs = self.train_images[itr*self.batch_size:(itr+1)*(self.batch_size)]
+					_, summary_str, cl_loss_temp = sess.run([self.loss_optimizer, self.cl_loss_summ, self.loss],feed_dict={self.input_imgs:imgs})
+
+					print("In the iteration "+str(itr)+" of epoch "+str(epoch)+" with classification loss of " + str(cl_loss_temp))
+
+					writer.add_summary(summary_str,epoch*int(self.n_samples/self.batch_size) + itr)
+
+
+
 
 
 
