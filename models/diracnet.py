@@ -48,13 +48,18 @@ class Dirac():
 
 		opt = self.parser.parse_args()[0]
 
+		self.max_epoch = opt.max_epoch
 		self.batch_size = opt.batch_size
 		self.img_width = opt.img_width
 		self.img_height = opt.img_height
 		self.img_depth = opt.img_depth
+		self.img_size = self.img_width*self.img_height*self.img_depth
 		self.dataset = opt.dataset
 		self.num_groups = opt.num_groups
 		self.num_blocks = opt.num_blocks
+		self.num_images_per_file = 10000
+		self.num_files = 5
+		self.num_images = self.num_images_per_file*self.num_files
 		self.model = "dirac"
 		self.to_test = opt.test
 		self.load_checkpoint = False
@@ -71,8 +76,8 @@ class Dirac():
 
 			if (mode == 'train'):
 
-				self.train_images = np.zeros([10000*5,3072], dtype=np.float32)
-				self.train_labels = np.zeros([10000*5], dtype=np.int32)
+				self.train_images = np.zeros([self.num_images,self.img_size], dtype=np.float32)
+				self.train_labels = np.zeros([self.num_images], dtype=np.int32)
 
 				for i in range(0, 5):
 					file_path = os.path.join(os.path.dirname(__file__), "../../datasets/cifar-10-python/cifar-10-batches-py/data_batch_" + str(i+1))
@@ -81,13 +86,15 @@ class Dirac():
 						data = pickle.load(file, encoding='bytes')
 						temp_images = np.array(data[b'data'])
 						temp_labels = np.array(data[b'labels']).astype(np.int32)
-						self.train_images[i*10000:(i+1)*10000,:] = temp_images
-						self.train_labels[i*10000:(i+1)*10000] = temp_labels
+						self.train_images[i*self.num_images_per_file:(i+1)*self.num_images_per_file,:] = temp_images
+						self.train_labels[i*self.num_images_per_file:(i+1)*self.num_images_per_file] = temp_labels
+				
+				self.train_images = np.reshape(self.train_images,[self.num_images, self.img_height, self.img_width, self.img_depth])
 
 			elif (mode == 'test'):
 
-				self.test_images = np.zeros([10000*5,3072], dtype=np.float32)
-				self.test_labels = np.zeros([10000*5], dtype=np.int32)
+				self.test_images = np.zeros([self.num_images_per_file*5,3072], dtype=np.float32)
+				self.test_labels = np.zeros([self.num_images_per_file*5], dtype=np.int32)
 
 				for i in range(0, 5):
 					file_path = os.path.join(os.path.dirname(__file__), "../../datasets/cifar-10-python/cifar-10-batches-py/data_batch_" + str(i+1))
@@ -96,8 +103,10 @@ class Dirac():
 						data = pickle.load(file, encoding='bytes')
 						temp_images = np.array(data[b'data'])
 						temp_labels = np.array(data[b'labels']).astype(np.int32)
-						self.test_images[i*10000:(i+1)*10000,:] = temp_images
-						self.test_labels[i*10000:(i+1)*10000] = temp_labels
+						self.test_images[i*self.num_images_per_file:(i+1)*self.num_images_per_file,:] = temp_images
+						self.test_labels[i*self.num_images_per_file:(i+1)*self.num_images_per_file] = temp_labels
+
+				self.test_images = np.reshape(self.test_images,[self.num_images, self.img_height, self.img_width, self.img_depth])
 		else:
 			print("Model not supported for this dataset")
 			sys.exit()
@@ -139,13 +148,14 @@ class Dirac():
 						print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))					
 						# print("conv layer of group " + str(group) + " and block " + str(block))
 					
-					if(group < 2):
+					if(group != self.num_groups-1):
 						o_loop = tf.nn.pool(o_loop, [2, 2], "MAX", "SAME", [1, 1], [2, 2], name="maxpool_"+str(group))
 					
 					outdim = outdim*2
 
-				o_avgpool = tf.nn.avg_pool(o_loop, [1, 8, 8, 1], [1, 8, 8, 1], "VALID", name="avgpool")
-				self.final_output = linear1d(tf.reshape(o_avgpool, [self.batch_size, 64]), 64, 10) 
+				o_avgpool = tf.nn.avg_pool(o_loop, [1, o_loop.get_shape()[1], o_loop.get_shape()[2], 1], [1, o_loop.get_shape()[1], o_loop.get_shape()[2], 1], "VALID", name="avgpool")
+				temp_depth = o_avgpool.get_shape().as_list()[-1]
+				self.final_output = linear1d(tf.reshape(o_avgpool, [self.batch_size, temp_depth]), temp_depth, 10) 
 
 			else :
 				print("No such dataset exist. Exiting the program")
@@ -167,9 +177,9 @@ class Dirac():
 
 		# Defining the summary ops
 
-		self.cl_loss_summ = tf.summary.scalar("cl_loss", loss)
+		self.cl_loss_summ = tf.summary.scalar("cl_loss", self.loss)
 
-		print(loss.shape)
+		print(self.loss.shape)
 
 
 
@@ -183,7 +193,7 @@ class Dirac():
 
 		if self.dataset == 'cifar-10':
 			self.load_dataset('train')
-			self.normalize_input()
+			self.normalize_input(self.input_imgs)
 		else :
 			print('No such dataset exist')
 
@@ -200,8 +210,9 @@ class Dirac():
 
 		with tf.Session() as sess:
 
-			writer.add_graph(sess.graph)
 			sess.run(init)
+			writer = tf.summary.FileWriter(self.tensorboard_dir)
+			writer.add_graph(sess.graph)
 
 			if self.load_checkpoint:
 				chkpt_fname = tf.train.latest_checkpoint(self.check_dir)
@@ -212,11 +223,13 @@ class Dirac():
 				for itr in range(0, int(self.num_images/self.batch_size)):
 
 					imgs = self.train_images[itr*self.batch_size:(itr+1)*(self.batch_size)]
-					_, summary_str, cl_loss_temp = sess.run([self.loss_optimizer, self.cl_loss_summ, self.loss],feed_dict={self.input_imgs:imgs})
+					labels = self.train_labels[itr*self.batch_size:(itr+1)*(self.batch_size)]
+
+					_, summary_str, cl_loss_temp = sess.run([self.loss_optimizer, self.cl_loss_summ, self.loss],feed_dict={self.input_imgs:imgs, self.input_labels:labels})
 
 					print("In the iteration "+str(itr)+" of epoch "+str(epoch)+" with classification loss of " + str(cl_loss_temp))
 
-					writer.add_summary(summary_str,epoch*int(self.n_samples/self.batch_size) + itr)
+					writer.add_summary(summary_str,epoch*int(self.num_images/self.batch_size) + itr)
 
 
 				saver.save(sess,os.path.join(self.check_dir,"dirac"),global_step=epoch)
