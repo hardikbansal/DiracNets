@@ -142,7 +142,7 @@ class Dirac():
 						# print("Relu layer of group " + str(group) + " and block " + str(block))
 						o_loop = dirac_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
 						# o_loop = general_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
-						# print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))					
+						print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))					
 						# print("conv layer of group " + str(group) + " and block " + str(block))
 					
 					if(group != self.num_groups-1):
@@ -150,7 +150,8 @@ class Dirac():
 					
 					outdim = outdim*2
 
-				o_avgpool = tf.nn.avg_pool(o_loop, [1, o_loop.get_shape()[1], o_loop.get_shape()[2], 1], [1, o_loop.get_shape()[1], o_loop.get_shape()[2], 1], "VALID", name="avgpool")
+				temp_shape = o_loop.get_shape().as_list()
+				o_avgpool = tf.nn.avg_pool(o_loop, [1, temp_shape[1], temp_shape[2], 1], [1, temp_shape[1], temp_shape[2], 1], "VALID", name="avgpool")
 				temp_depth = o_avgpool.get_shape().as_list()[-1]
 				self.final_output = linear1d(tf.reshape(o_avgpool, [self.batch_size, temp_depth]), temp_depth, 10) 
 

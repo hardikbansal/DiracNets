@@ -35,7 +35,7 @@ def linear1d(inputlin, inputdim, outputdim, name="linear1d", std=0.02, mn=0.0):
 		return tf.matmul(inputlin, weight) + bias
 
 
-def general_conv2d(inputconv, output_dim=64, filter_height=5, filter_width=5, stride_height=1, stride_width=1, stddev=0.02, padding="SAME", name="conv2d", do_norm=False, norm_type='batch_norm', do_relu=False, relufactor=0):
+def general_conv2d(inputconv, output_dim=64, filter_height=5, filter_width=5, stride_height=1, stride_width=1, stddev=0.02, padding="SAME", name="conv2d", do_norm=True, norm_type='batch_norm', do_relu=False, relufactor=0):
 	with tf.variable_scope(name) as scope:
 
 		conv = tf.contrib.layers.conv2d(inputconv, output_dim, [filter_width, filter_height], [stride_width, stride_height], padding, activation_fn=None, weights_initializer=tf.truncated_normal_initializer(stddev=stddev),biases_initializer=tf.constant_initializer(0.0))
