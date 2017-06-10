@@ -154,7 +154,6 @@ class Dirac():
 				o_avgpool = tf.nn.avg_pool(o_loop, [1, temp_shape[1], temp_shape[2], 1], [1, temp_shape[1], temp_shape[2], 1], "VALID", name="avgpool")
 				temp_depth = o_avgpool.get_shape().as_list()[-1]
 				self.final_output = linear1d(tf.reshape(o_avgpool, [self.batch_size, temp_depth]), temp_depth, 10) 
-
 			else :
 				print("No such dataset exist. Exiting the program")
 				sys.exit()
