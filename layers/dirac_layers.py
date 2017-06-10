@@ -12,7 +12,7 @@ def ncrelu(x, name="crelu"):
 
 
 
-def dirac_conv2d(inputconv, output_dim=64, filter_height=5, filter_width=5, stride_height=1, stride_width=1, stddev=0.02, padding="SAME", name="dirac_conv2d"):
+def dirac_conv2d(inputconv, output_dim=64, filter_height=5, filter_width=5, stride_height=1, stride_width=1, stddev=0.02, padding="SAME", do_norm=True, norm_type='batch_norm', name="dirac_conv2d"):
 
 	with tf.variable_scope(name) as scope:
 
@@ -27,5 +27,11 @@ def dirac_conv2d(inputconv, output_dim=64, filter_height=5, filter_width=5, stri
 		beta = tf.get_variable("beta", 1, initializer=tf.constant_initializer(1e-5))
 
 		output_conv = tf.nn.conv2d(inputconv, alpha*dirac_weight + beta*weight, [1, stride_height, stride_width, 1], padding="SAME")
+
+		if do_norm:
+			if norm_type == 'instance_norm':
+				output_conv = instance_norm(output_conv)
+			elif norm_type == 'batch_norm':
+				output_conv = tf.contrib.layers.batch_norm(output_conv, decay=0.9, updates_collections=None, epsilon=1e-5, scale=True, scope="batch_norm")
 
 		return output_conv

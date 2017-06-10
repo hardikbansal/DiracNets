@@ -124,15 +124,11 @@ class Dirac():
 			self.input_imgs = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
 			self.input_labels = tf.placeholder(tf.int32, [self.batch_size])
 
-
 			if(self.dataset == 'cifar-10'):
 
 				input_pad = tf.pad(self.input_imgs, [[0, 0], [1, 1], [1, 1], [0, 0]])
-				# print(input_pad.shape)
 				o_c1 = general_conv2d(input_pad, 16, 3, 3, 1, 1, name="conv_top")
-				# print(o_c1.shape)
 				o_loop = tf.nn.relu(o_c1, name="relu_1")
-				# print(o_loop.shape)
 
 				outdim = 16
 
@@ -145,11 +141,12 @@ class Dirac():
 						o_loop = ncrelu(o_loop, name="crelu_"+str(group)+"_"+str(block))
 						# print("Relu layer of group " + str(group) + " and block " + str(block))
 						o_loop = dirac_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
-						print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))					
+						# o_loop = general_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
+						# print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))					
 						# print("conv layer of group " + str(group) + " and block " + str(block))
 					
 					if(group != self.num_groups-1):
-						o_loop = tf.nn.pool(o_loop, [2, 2], "MAX", "SAME", [1, 1], [2, 2], name="maxpool_"+str(group))
+						o_loop = tf.nn.pool(o_loop, [2, 2], "MAX", "VALID", None, [2, 2], name="maxpool_"+str(group))
 					
 					outdim = outdim*2
 
