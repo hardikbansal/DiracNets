@@ -7,7 +7,7 @@ def dirac_initializer_2d(filter_height, filter_width, input_dim, output_dim):
 
 	if(output_dim >= input_dim):
 		for i in range(int(output_dim/input_dim)):
-			temp[int(filter_width/2),int(filter_height/2), :, i*input_dim:(i+1)*input_dim] = np.eye(input_dim, dtype=float32)
+			temp[int(filter_width/2),int(filter_height/2), :, i*input_dim:(i+1)*input_dim] = np.eye(input_dim, dtype=np.float32)
 
 	return temp
 
@@ -22,15 +22,15 @@ def dirac_conv2d(inputconv, output_dim=64, filter_height=5, filter_width=5, stri
 
 	with tf.variable_scope(name) as scope:
 
-		input_dim = inputconv.get_shape()[-1]
+		input_dim = inputconv.get_shape().as_list()[-1]
 
 		weight = tf.get_variable("weight",[filter_height, filter_width, input_dim, output_dim], initializer=tf.truncated_normal_initializer(stddev=stddev))		
 		bias = tf.get_variable("bias",[output_dim], dtype=np.float32, initializer=tf.constant_initializer(0.0))
 
 		dirac_weight = tf.get_variable("dirac_weight",[filter_height, filter_width, input_dim, output_dim], initializer=tf.constant_initializer(dirac_initializer_2d(filter_height, filter_width, input_dim, output_dim)), trainable=False)
 
-		alpha = tf.get_variable("alpha", 1, initializer=tf.constant_initializer(5.0))
-		beta = tf.get_variable("beta", 1, initializer=tf.constant_initializer(1e-5))
+		alpha = tf.get_variable("alpha", 1, initializer=tf.constant_initializer(1.0))
+		beta = tf.get_variable("beta", 1, initializer=tf.constant_initializer(1.0))
 
 		output_conv = tf.nn.conv2d(inputconv, alpha*dirac_weight + beta*weight, [1, stride_height, stride_width, 1], padding="SAME")
 
