@@ -64,7 +64,7 @@ class Dirac():
 			self.img_width = opt.img_width
 			self.img_height = opt.img_height
 			self.img_depth = opt.img_depth
-		
+
 		self.img_size = self.img_width*self.img_height*self.img_depth
 		self.num_groups = opt.num_groups
 		self.num_blocks = opt.num_blocks
@@ -74,6 +74,7 @@ class Dirac():
 		self.model = "dirac"
 		self.to_test = opt.test
 		self.load_checkpoint = False
+		self.do_setup = True
 
 		self.tensorboard_dir = "./output/" + self.model + "/" + self.dataset + "/tensorboard"
 		self.check_dir = "./output/"+ self.model + "/" + self.dataset +"/checkpoints"
@@ -190,9 +191,6 @@ class Dirac():
 				temp_depth = o_avgpool.get_shape().as_list()[-1]
 				self.final_output = linear1d(tf.reshape(o_avgpool, [self.batch_size, temp_depth]), temp_depth, 100)
 
-
-
-
 			else :
 				print("No such dataset exist. Exiting the program")
 				sys.exit()
@@ -201,6 +199,8 @@ class Dirac():
 
 		self.model_vars = tf.trainable_variables()
 		for var in self.model_vars: print(var.name, var.get_shape())
+
+		self.do_setup = False
 
 	def loss_setup(self):
 
@@ -218,8 +218,6 @@ class Dirac():
 		print(self.loss.shape)
 
 
-
-
 	def train(self):
 
 		self.model_setup()
@@ -232,11 +230,10 @@ class Dirac():
 			self.normalize_input(self.input_imgs)
 		else :
 			print('No such dataset exist')
-
+			sys.exit()
 
 		init = tf.global_variables_initializer()
 		saver = tf.train.Saver()
-
 
 		if not os.path.exists(self.images_dir+"/train/"):
 			os.makedirs(self.images_dir+"/train/")
@@ -273,13 +270,43 @@ class Dirac():
 
 
 
-
-
-
-
 	def test():
 
-		return 1
+		if(do_setup):
+			self.model_setup()
+
+		if self.dataset == 'cifar-10':
+			self.load_dataset('test')
+			self.normalize_input(self.input_imgs)
+		else :
+			print('No such dataset exist')
+			sys.exit()
+
+
+		init = tf.global_variables_initializer()
+
+		if not os.path.exists(self.images_dir+"/test/"):
+			os.makedirs(self.images_dir+"/test/")
+		if not os.path.exists(self.check_dir):
+			print("No checkpoint directory exist.")
+			sys.exit()
+
+
+
+		with tf.Session() as sess:
+
+			sess.run(init)
+
+			if self.load_checkpoint:
+				chkpt_fname = tf.train.latest_checkpoint(self.check_dir)
+				saver.restore(sess,chkpt_fname)
+
+			for itr in range(0, int(self.num_test_images/self.batch_size)):
+
+				imgs = self.train_images[itr*self.batch_size:(itr+1)*(self.batch_size)]
+				labels = self.train_labels[itr*self.batch_size:(itr+1)*(self.batch_size)]
+
+				test_output = sess.run([self.final_output],feed_dict={self.input_imgs:imgs, self.input_labels:labels})
 
 
 def main():
