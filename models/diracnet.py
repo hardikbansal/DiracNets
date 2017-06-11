@@ -71,6 +71,7 @@ class Dirac():
 		self.num_images_per_file = 10000
 		self.num_files = 5
 		self.num_images = self.num_images_per_file*self.num_files
+		self.num_test_images = opt.num_test_images
 		self.model = "dirac"
 		self.to_test = opt.test
 		self.load_checkpoint = False
@@ -128,6 +129,69 @@ class Dirac():
 
 		return imgs/127.5-1.0
 
+	def cifar_model_setup(self):
+
+		self.input_imgs = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
+		self.input_labels = tf.placeholder(tf.int32, [self.batch_size])
+
+		input_pad = tf.pad(self.input_imgs, [[0, 0], [1, 1], [1, 1], [0, 0]])
+		o_c1 = general_conv2d(input_pad, 16, 3, 3, 1, 1, name="conv_top")
+		o_loop = tf.nn.relu(o_c1, name="relu_1")
+
+		outdim = 16
+
+		for group in range(0, self.num_groups):
+			# print("Max pool layer of group " + str(group) )
+			for block in range(0, self.num_blocks):
+
+				o_loop = ncrelu(o_loop, name="crelu_"+str(group)+"_"+str(block))
+				# print("Relu layer of group " + str(group) + " and block " + str(block))
+				o_loop = dirac_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
+				# o_loop = general_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
+				print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))					
+				# print("conv layer of group " + str(group) + " and block " + str(block))
+			
+			if(group != self.num_groups-1):
+				o_loop = tf.nn.pool(o_loop, [2, 2], "MAX", "VALID", None, [2, 2], name="maxpool_"+str(group))
+			
+			outdim = outdim*2
+
+		temp_shape = o_loop.get_shape().as_list()
+		o_avgpool = tf.nn.avg_pool(o_loop, [1, temp_shape[1], temp_shape[2], 1], [1, temp_shape[1], temp_shape[2], 1], "VALID", name="avgpool")
+		temp_depth = o_avgpool.get_shape().as_list()[-1]
+		self.final_output = linear1d(tf.reshape(o_avgpool, [self.batch_size, temp_depth]), temp_depth, 10)
+
+	def inet_model_setup(self):
+
+		self.input_imgs = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
+		self.input_labels = tf.placeholder(tf.int32, [self.batch_size])
+
+		input_conv = general_conv2d(self.input_imgs, 48, 7, 7, 2, 2, padding="SAME", name="conv_top")
+
+		outdim = 48
+
+		for group in range(0, self.num_groups):
+
+			if(group != 0):
+				o_loop = tf.nn.pool(o_loop, [2, 2], "MAX", "VALID", None, [2, 2], name="maxpool_"+str(group))
+			else : 
+				input_pad = tf.pad(input_conv, [[0, 0], [1, 1], [1, 1], [0, 0]])
+				o_loop = tf.nn.pool(o_loop, [3, 3], "MAX", "VALID", None, [2, 2], name="maxpool_"+str(group))
+
+			for block in range(0, self.num_blocks):
+				o_loop = ncrelu(o_loop, name="crelu_"+str(group)+"_"+str(block))
+				o_loop = dirac_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
+
+			outdim = outdim*2
+
+		o_relu = tf.nn.relu(o_loop)
+		temp_shape = o_relu.get_shape().as_list()
+		o_avgpool = tf.nn.avg_pool(o_relu, [1, temp_shape[1], temp_shape[2], 1], [1, temp_shape[1], temp_shape[2], 1], "VALID", name="avgpool")
+		temp_depth = o_avgpool.get_shape().as_list()[-1]
+		self.final_output = linear1d(tf.reshape(o_avgpool, [self.batch_size, temp_depth]), temp_depth, 100)
+
+
+
 	def model_setup(self):
 
 
@@ -136,66 +200,13 @@ class Dirac():
 			self.input_imgs = tf.placeholder(tf.float32, [self.batch_size, self.img_height, self.img_width, self.img_depth])
 			self.input_labels = tf.placeholder(tf.int32, [self.batch_size])
 
-			if(self.dataset == 'cifar-10'):
-
-				input_pad = tf.pad(self.input_imgs, [[0, 0], [1, 1], [1, 1], [0, 0]])
-				o_c1 = general_conv2d(input_pad, 16, 3, 3, 1, 1, name="conv_top")
-				o_loop = tf.nn.relu(o_c1, name="relu_1")
-
-				outdim = 16
-
-				for group in range(0, self.num_groups):
-					# print("Max pool layer of group " + str(group) )
-					for block in range(0, self.num_blocks):
-
-						o_loop = ncrelu(o_loop, name="crelu_"+str(group)+"_"+str(block))
-						# print("Relu layer of group " + str(group) + " and block " + str(block))
-						o_loop = dirac_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
-						# o_loop = general_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
-						print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))					
-						# print("conv layer of group " + str(group) + " and block " + str(block))
-					
-					if(group != self.num_groups-1):
-						o_loop = tf.nn.pool(o_loop, [2, 2], "MAX", "VALID", None, [2, 2], name="maxpool_"+str(group))
-					
-					outdim = outdim*2
-
-				temp_shape = o_loop.get_shape().as_list()
-				o_avgpool = tf.nn.avg_pool(o_loop, [1, temp_shape[1], temp_shape[2], 1], [1, temp_shape[1], temp_shape[2], 1], "VALID", name="avgpool")
-				temp_depth = o_avgpool.get_shape().as_list()[-1]
-				self.final_output = linear1d(tf.reshape(o_avgpool, [self.batch_size, temp_depth]), temp_depth, 10)
-
-			elif(self.dataset == 'Imagenet'):
-
-				input_conv = general_conv2d(self.input_imgs, 48, 7, 7, 2, 2, padding="SAME", name="conv_top")
-
-				outdim = 48
-
-				for group in range(0, self.num_groups):
-
-					if(group != 0):
-						o_loop = tf.nn.pool(o_loop, [2, 2], "MAX", "VALID", None, [2, 2], name="maxpool_"+str(group))
-					else : 
-						input_pad = tf.pad(input_conv, [[0, 0], [1, 1], [1, 1], [0, 0]])
-						o_loop = tf.nn.pool(o_loop, [3, 3], "MAX", "VALID", None, [2, 2], name="maxpool_"+str(group))
-
-					for block in range(0, self.num_blocks):
-						o_loop = ncrelu(o_loop, name="crelu_"+str(group)+"_"+str(block))
-						o_loop = dirac_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
-
-					outdim = outdim*2
-
-				o_relu = tf.nn.relu(o_loop)
-				temp_shape = o_relu.get_shape().as_list()
-				o_avgpool = tf.nn.avg_pool(o_relu, [1, temp_shape[1], temp_shape[2], 1], [1, temp_shape[1], temp_shape[2], 1], "VALID", name="avgpool")
-				temp_depth = o_avgpool.get_shape().as_list()[-1]
-				self.final_output = linear1d(tf.reshape(o_avgpool, [self.batch_size, temp_depth]), temp_depth, 100)
-
+			if (self.dataset == 'cifar-10'):
+				self.cifar_model_setup()
+			elif (self.dataset == 'Imagenet'):
+				self.inet_model_setup()
 			else :
 				print("No such dataset exist. Exiting the program")
 				sys.exit()
-
-		# Printing the model variables
 
 		self.model_vars = tf.trainable_variables()
 		for var in self.model_vars: print(var.name, var.get_shape())
@@ -208,14 +219,11 @@ class Dirac():
 		self.loss = tf.reduce_mean(self.loss)
 
 		optimizer = tf.train.AdamOptimizer(0.001, beta1=0.5)
-
 		self.loss_optimizer = optimizer.minimize(self.loss)
 
 		# Defining the summary ops
-
 		self.cl_loss_summ = tf.summary.scalar("cl_loss", self.loss)
-
-		print(self.loss.shape)
+		# print(self.loss.shape)
 
 
 	def train(self):
