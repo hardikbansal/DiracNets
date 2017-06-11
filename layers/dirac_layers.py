@@ -54,7 +54,7 @@ def dirac_conv2d(inputconv, output_dim=64, filter_height=5, filter_width=5, stri
 		alpha = tf.get_variable("alpha", 1, initializer=tf.constant_initializer(1.0))
 		beta = tf.get_variable("beta", 1, initializer=tf.constant_initializer(1.0))
 
-		output_conv = tf.nn.conv2d(inputconv, alpha*dirac_weight + beta*weight, [1, stride_height, stride_width, 1], padding="SAME")
+		output_conv = tf.nn.conv2d(inputconv, alpha*dirac_weight + beta*weight, [1, stride_height, stride_width, 1], padding=padding)
 
 		if do_norm:
 			if norm_type == 'instance_norm':

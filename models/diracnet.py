@@ -50,11 +50,22 @@ class Dirac():
 
 		self.max_epoch = opt.max_epoch
 		self.batch_size = opt.batch_size
-		self.img_width = opt.img_width
-		self.img_height = opt.img_height
-		self.img_depth = opt.img_depth
-		self.img_size = self.img_width*self.img_height*self.img_depth
 		self.dataset = opt.dataset
+
+		if(self.dataset == 'cifar-10'):
+			self.img_width = 32
+			self.img_height = 32
+			self.img_depth = 3
+		elif(self.dataset == 'Imagenet'):
+			self.img_width = 256
+			self.img_height = 256
+			self.img_depth = 3
+		else :
+			self.img_width = opt.img_width
+			self.img_height = opt.img_height
+			self.img_depth = opt.img_depth
+		
+		self.img_size = self.img_width*self.img_height*self.img_depth
 		self.num_groups = opt.num_groups
 		self.num_blocks = opt.num_blocks
 		self.num_images_per_file = 10000
@@ -133,9 +144,7 @@ class Dirac():
 				outdim = 16
 
 				for group in range(0, self.num_groups):
-					
 					# print("Max pool layer of group " + str(group) )
-
 					for block in range(0, self.num_blocks):
 
 						o_loop = ncrelu(o_loop, name="crelu_"+str(group)+"_"+str(block))
@@ -153,7 +162,37 @@ class Dirac():
 				temp_shape = o_loop.get_shape().as_list()
 				o_avgpool = tf.nn.avg_pool(o_loop, [1, temp_shape[1], temp_shape[2], 1], [1, temp_shape[1], temp_shape[2], 1], "VALID", name="avgpool")
 				temp_depth = o_avgpool.get_shape().as_list()[-1]
-				self.final_output = linear1d(tf.reshape(o_avgpool, [self.batch_size, temp_depth]), temp_depth, 10) 
+				self.final_output = linear1d(tf.reshape(o_avgpool, [self.batch_size, temp_depth]), temp_depth, 10)
+
+			elif(self.dataset == 'Imagenet'):
+
+				input_conv = general_conv2d(self.input_imgs, 48, 7, 7, 2, 2, padding="SAME", name="conv_top")
+
+				outdim = 48
+
+				for group in range(0, self.num_groups):
+
+					if(group != 0):
+						o_loop = tf.nn.pool(o_loop, [2, 2], "MAX", "VALID", None, [2, 2], name="maxpool_"+str(group))
+					else : 
+						input_pad = tf.pad(input_conv, [[0, 0], [1, 1], [1, 1], [0, 0]])
+						o_loop = tf.nn.pool(o_loop, [3, 3], "MAX", "VALID", None, [2, 2], name="maxpool_"+str(group))
+
+					for block in range(0, self.num_blocks):
+						o_loop = ncrelu(o_loop, name="crelu_"+str(group)+"_"+str(block))
+						o_loop = dirac_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
+
+					outdim = outdim*2
+
+				o_relu = tf.nn.relu(o_loop)
+				temp_shape = o_relu.get_shape().as_list()
+				o_avgpool = tf.nn.avg_pool(o_relu, [1, temp_shape[1], temp_shape[2], 1], [1, temp_shape[1], temp_shape[2], 1], "VALID", name="avgpool")
+				temp_depth = o_avgpool.get_shape().as_list()[-1]
+				self.final_output = linear1d(tf.reshape(o_avgpool, [self.batch_size, temp_depth]), temp_depth, 100)
+
+
+
+
 			else :
 				print("No such dataset exist. Exiting the program")
 				sys.exit()
