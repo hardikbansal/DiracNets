@@ -8,7 +8,7 @@ import random
 import sys
 import pickle
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from layers.basic_layers import *
 from layers.dirac_layers import *
@@ -190,8 +190,6 @@ class Dirac():
 		temp_depth = o_avgpool.get_shape().as_list()[-1]
 		self.final_output = linear1d(tf.reshape(o_avgpool, [self.batch_size, temp_depth]), temp_depth, 100)
 
-
-
 	def model_setup(self):
 
 
@@ -276,8 +274,6 @@ class Dirac():
 				saver.save(sess,os.path.join(self.check_dir,"dirac"),global_step=epoch)
 
 
-
-
 	def test():
 
 		if(do_setup):
@@ -322,7 +318,7 @@ def main():
 	model = Dirac()
 	model.initialize()
 
-	model.load_dataset()
+	# model.load_dataset()
 
 	# sys.exit()
 
