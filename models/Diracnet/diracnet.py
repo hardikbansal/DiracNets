@@ -33,6 +33,7 @@ class Dirac():
 		self.parser.add_option('--img_depth', type='int', default=3, dest='img_depth')
 		self.parser.add_option('--num_groups', type='int', default=3, dest='num_groups')
 		self.parser.add_option('--num_blocks', type='int', default=4, dest='num_blocks')
+		self.parser.add_option('--num_test_images', type='int', default=100, dest='num_test_images')
 		self.parser.add_option('--max_epoch', type='int', default=20, dest='max_epoch')
 		self.parser.add_option('--n_samples', type='int', default=50000, dest='n_samples')
 		self.parser.add_option('--test', action="store_true", default=False, dest="test")
@@ -110,7 +111,7 @@ class Dirac():
 				self.test_labels = np.zeros([self.num_images_per_file*5], dtype=np.int32)
 
 				for i in range(0, 5):
-					file_path = os.path.join(os.path.dirname(__file__), "../../datasets/cifar-10-python/cifar-10-batches-py/data_batch_" + str(i+1))
+					file_path = os.path.join(os.path.dirname(__file__), "../../../datasets/cifar-10-python/cifar-10-batches-py/data_batch_" + str(i+1))
 					print(file_path)
 					with open(file_path, mode='rb') as file:
 						data = pickle.load(file, encoding='bytes')
@@ -311,6 +312,9 @@ class Dirac():
 				labels = self.train_labels[itr*self.batch_size:(itr+1)*(self.batch_size)]
 
 				test_output = sess.run([self.final_output],feed_dict={self.input_imgs:imgs, self.input_labels:labels})
+
+				print(test_output)
+				print(labels)
 
 
 def main():
