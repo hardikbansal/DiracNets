@@ -7,6 +7,9 @@ import time
 import random
 import sys
 import pickle
+import wget
+import tarfile
+
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -88,13 +91,24 @@ class Dirac():
 
 		if self.dataset=='cifar-10':
 
+			if not os.path.isdir(os.path.join(os.path.dirname(__file__),"../../../datasets/cifar-10-batches-py")):
+				if not os.path.isdir(os.path.join(os.path.dirname(__file__),"../../../datasets")):
+					os.makedirs(os.path.join(os.path.dirname(__file__),"../../../datasets"))
+				wget.download("https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz",out=os.path.join(os.path.dirname(__file__),"../../../datasets1"))
+				tar = tarfile.open(os.path.join(os.path.dirname(__file__),"../../../datasets/cifar-10-python.tar.gz"))
+				tar.extractall()
+				tar.close()
+				shutil.move("./cifar-10-batches-py",os.path.join(os.path.dirname(__file__),"../../../datasets/"))
+
+
+
 			if (mode == 'train'):
 
 				self.train_images = np.zeros([self.num_images,self.img_size], dtype=np.float32)
 				self.train_labels = np.zeros([self.num_images], dtype=np.int32)
 
 				for i in range(0, 5):
-					file_path = os.path.join(os.path.dirname(__file__), "../../datasets/cifar-10-python/cifar-10-batches-py/data_batch_" + str(i+1))
+					file_path = os.path.join(os.path.dirname(__file__), "../../../datasets/cifar-10-batches-py/data_batch_" + str(i+1))
 					print(file_path)
 					with open(file_path, mode='rb') as file:
 						data = pickle.load(file, encoding='bytes')
@@ -107,11 +121,11 @@ class Dirac():
 
 			elif (mode == 'test'):
 
-				self.test_images = np.zeros([self.num_images_per_file*5,3072], dtype=np.float32)
-				self.test_labels = np.zeros([self.num_images_per_file*5], dtype=np.int32)
+				self.test_images = np.zeros([self.num_images_per_file,3072], dtype=np.float32)
+				self.test_labels = np.zeros([self.num_images_per_file], dtype=np.int32)
 
-				for i in range(0, 5):
-					file_path = os.path.join(os.path.dirname(__file__), "../../../datasets/cifar-10-python/cifar-10-batches-py/data_batch_" + str(i+1))
+				for i in range(0, 1):
+					file_path = os.path.join(os.path.dirname(__file__), "../../../datasets/cifar-10-batches-py/data_batch_" + str(i+1))
 					print(file_path)
 					with open(file_path, mode='rb') as file:
 						data = pickle.load(file, encoding='bytes')
