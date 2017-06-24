@@ -45,6 +45,7 @@ class Dirac():
 		self.parser.add_option('--dec_size', type='int', default=256, dest='dec_size')
 		self.parser.add_option('--model', type='string', default="draw_attn", dest='model_type')
 		self.parser.add_option('--dataset', type='string', default="cifar-10", dest='dataset')
+		self.parser.add_option('--dataset_folder', type='string', default="../../../datasets", dest='dataset_folder')
 
 	def initialize(self):
 
@@ -76,6 +77,7 @@ class Dirac():
 		self.num_files = 5
 		self.num_images = self.num_images_per_file*self.num_files
 		self.num_test_images = opt.num_test_images
+		self.dataset_folder = opt.dataset_folder
 		self.model = "dirac"
 		self.to_test = opt.test
 		self.load_checkpoint = False
@@ -91,14 +93,14 @@ class Dirac():
 
 		if self.dataset=='cifar-10':
 
-			if not os.path.isdir(os.path.join(os.path.dirname(__file__),"../../../datasets/cifar-10-batches-py")):
-				if not os.path.isdir(os.path.join(os.path.dirname(__file__),"../../../datasets")):
-					os.makedirs(os.path.join(os.path.dirname(__file__),"../../../datasets"))
-				wget.download("https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz",out=os.path.join(os.path.dirname(__file__),"../../../datasets1"))
-				tar = tarfile.open(os.path.join(os.path.dirname(__file__),"../../../datasets/cifar-10-python.tar.gz"))
+			if not os.path.isdir(os.path.join(os.path.dirname(__file__),self.dataset_folder+"/cifar-10-batches-py")):
+				if not os.path.isdir(os.path.join(os.path.dirname(__file__),self.dataset_folder)):
+					os.makedirs(os.path.join(os.path.dirname(__file__),self.dataset_folder))
+				wget.download("https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz",out=os.path.join(os.path.dirname(__file__),self.dataset_folder))
+				tar = tarfile.open(os.path.join(os.path.dirname(__file__),self.dataset_folder+ "/cifar-10-python.tar.gz"))
 				tar.extractall()
 				tar.close()
-				shutil.move("./cifar-10-batches-py",os.path.join(os.path.dirname(__file__),"../../../datasets/"))
+				shutil.move("./cifar-10-batches-py",os.path.join(os.path.dirname(__file__),self.dataset_folder))
 
 
 
@@ -108,7 +110,7 @@ class Dirac():
 				self.train_labels = np.zeros([self.num_images], dtype=np.int32)
 
 				for i in range(0, 5):
-					file_path = os.path.join(os.path.dirname(__file__), "../../../datasets/cifar-10-batches-py/data_batch_" + str(i+1))
+					file_path = os.path.join(os.path.dirname(__file__), self.dataset_folder + "/cifar-10-batches-py/data_batch_" + str(i+1))
 					print(file_path)
 					with open(file_path, mode='rb') as file:
 						data = pickle.load(file, encoding='bytes')
@@ -125,7 +127,7 @@ class Dirac():
 				self.test_labels = np.zeros([self.num_images_per_file], dtype=np.int32)
 
 				for i in range(0, 1):
-					file_path = os.path.join(os.path.dirname(__file__), "../../../datasets/cifar-10-batches-py/data_batch_" + str(i+1))
+					file_path = os.path.join(os.path.dirname(__file__), self.dataset_folder + "/cifar-10-batches-py/data_batch_" + str(i+1))
 					print(file_path)
 					with open(file_path, mode='rb') as file:
 						data = pickle.load(file, encoding='bytes')
@@ -156,15 +158,10 @@ class Dirac():
 		outdim = 16
 
 		for group in range(0, self.num_groups):
-			# print("Max pool layer of group " + str(group) )
 			for block in range(0, self.num_blocks):
 
 				o_loop = ncrelu(o_loop, name="crelu_"+str(group)+"_"+str(block))
-				# print("Relu layer of group " + str(group) + " and block " + str(block))
 				o_loop = dirac_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
-				# o_loop = general_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
-				# print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))					
-				# print("conv layer of group " + str(group) + " and block " + str(block))
 			
 			if(group != self.num_groups-1):
 				o_loop = tf.nn.pool(o_loop, [2, 2], "MAX", "VALID", None, [2, 2], name="maxpool_"+str(group))

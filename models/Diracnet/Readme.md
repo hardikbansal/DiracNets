@@ -30,9 +30,6 @@ Apart from **dirac_conv2d**, we have also defined the **dirac_intitalizer** that
 
 In the file [models/Diracnet/diracnet.py](https://github.com/hardikbansal/General-DL-code-Tensorflow/blob/master/models/Diracnet/diracnet.py), we have implemented the model(defined in [paper](https://arxiv.org/pdf/1706.00388.pdf)) for Cifar-10 and Imagenet dataset.
 
-Model for Cifar-10 can be described by the following image:
-
-**Add image of the model over here**
 
 To run this model, run the following commands:
 
