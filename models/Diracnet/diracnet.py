@@ -86,7 +86,7 @@ class Dirac():
 		self.images_dir = "./output/" + self.model + "/" + self.dataset + "/imgs"
 
 
-	def load_dataset(self, mode='train'):
+	def load_cifar_dataset(self, mode='train'):
 
 
 		if self.dataset=='cifar-10':
@@ -163,7 +163,7 @@ class Dirac():
 				# print("Relu layer of group " + str(group) + " and block " + str(block))
 				o_loop = dirac_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
 				# o_loop = general_conv2d(o_loop, outdim, 3, 3, 1, 1, name="conv_"+str(group)+"_"+str(block))
-				print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))					
+				# print("In the group "+str(group)+ " and in the block "+ str(block) + " with dimension of o_loop as "+ str(o_loop.shape))					
 				# print("conv layer of group " + str(group) + " and block " + str(block))
 			
 			if(group != self.num_groups-1):
@@ -247,7 +247,7 @@ class Dirac():
 
 
 		if self.dataset == 'cifar-10':
-			self.load_dataset('train')
+			self.load_cifar_dataset('train')
 			self.normalize_input(self.input_imgs)
 		else :
 			print('No such dataset exist')
@@ -295,7 +295,7 @@ class Dirac():
 			self.model_setup()
 
 		if self.dataset == 'cifar-10':
-			self.load_dataset('test')
+			self.load_cifar_dataset('test')
 			self.normalize_input(self.input_imgs)
 		else :
 			print('No such dataset exist')
