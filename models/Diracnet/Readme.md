@@ -8,21 +8,27 @@ For that we will define a new/modified convolution function named **dirac_conv2d
 
 What Dirac Networks essentially does is the following step:
 
-**Add image over here**
+<p align="center">
+<img src="./Images/Dirac_conversion.png" alt="Discriminator" width="80%" />
+</p>
 
-Suppose using convolution matrix Conv_matrix_I in a convolution layers defines identity I that takes an input image and maps it to itself. Then the filter matrix in new convolution layer will be a\*conv_matrix + b\*Conv_matrix_I. Such that the new output of the convolution is a times the normal output of convolution layer + b times the original input image. Here, a and b are also paramenters to be learned.
+For this readme we will use Filter Matrix and Convolution Matrix interchangably. Basically it is the weight matrix that we use in convolution layer and pass it over the input image extract features. To understand convolution layer in detail one can read this blog by [ujjwarlkarn](https://ujjwalkarn.me/2016/08/11/intuitive-explanation-convnets/).
 
-So this layer can be used in any model as follow:
+Suppose, we have a convolution matrix **conv_matrix_I** in a convolution layer, such that the output is same as the input, that is the convolution layer act as the identitiy matrix, then the filter/convolution matrix in new dirac convolution layer will be **a\*conv_matrix + b\*conv_matrix_I**. Such that the new output of the convolution is **a** times the normal output of convolution layer + **b** times the original input image, i.e. adding the input as a residue to the output of a normal convolution layer. Here, **a** and **b** are also paramenters to be learned.
+
+*Note: Here conv_matrix_I is not a parameter to be learned, Rather it is a fixed matrix*
+
+The dirac convolution layer can be used in any model as follow:
 
 `dirac_conv2d(o_loop, outdim, filter_height=3, filter_width=3, stride_height=1, stride_width=1, name)`
 
 
-Apart from **dirac_conv2d**, we have also defined the dirac_intitalizer that according to author is a better initialization technique when we wants to carry the input image information into deeper layers. So, one can directly initialize use it as follow while initializing the convolution matrix.
+Apart from **dirac_conv2d**, we have also defined the **dirac_intitalizer** that according to author is a better initialization technique when we wants to carry the input image information into deeper layers. So, one can directly initialize use it as follow while initializing the convolution matrix.
 
 `conv_matrix = tf.get_variable("weight",[filter_height, filter_width, input_dim, output_dim], initializer=tf.truncated_normal_initializer(stddev=stddev))`
 
 
-In this file [models/Diracnet/diracnet.py](https://github.com/hardikbansal/General-DL-code-Tensorflow/blob/master/models/Diracnet/diracnet.py), we have implemented the model(defined in [paper](https://arxiv.org/pdf/1706.00388.pdf)) for Cifar-10 and Imagenet dataset.
+In the file [models/Diracnet/diracnet.py](https://github.com/hardikbansal/General-DL-code-Tensorflow/blob/master/models/Diracnet/diracnet.py), we have implemented the model(defined in [paper](https://arxiv.org/pdf/1706.00388.pdf)) for Cifar-10 and Imagenet dataset.
 
 Model for Cifar-10 can be described by the following image:
 
